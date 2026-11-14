@@ -37,11 +37,13 @@ LETTERS = "ABCDE"
 UNIT = r"\s*(?:cm|mm|km|m|kg|g|€|euros?|%|°|min|h|s)?\.?\s*"
 NUMBER = re.compile(r"^\s*(-?\d+(?:[.,]\d+)?)" + UNIT + r"$", re.I)
 
-SYSTEM = ("You solve math competition problems for school students. "
-          "Be very brief: at most 4 short lines of working, no restating the problem.")
+SYSTEM = ("You solve math competition problems for school students. Solve the problem step by step. "
+          "Be concise: do not restate the problem, go straight to the calculation.")
 ASK_NUMBER = "Final answer, as a number only:"
 ASK_LETTER = "Final answer, the letter of the option only:"
 NUMBER_GRAMMAR = 'root ::= "-"? [0-9]+ ("." [0-9]+)?'
+# The model starts its reply with words, so a bare letter as the first token is unreliable
+LETTER_GRAMMAR = 'root ::= "Answer: " [A-E]'
 
 # Board speeds for Qwen3.5 0.8B, in tokens per second (README step 6)
 BOARD_READ, BOARD_WRITE = 11.0, 5.9
@@ -70,32 +72,44 @@ def match(number, vals):
     return hits[0] if len(hits) == 1 else None
 
 
-def board_seconds(prompt_tokens, written_tokens, follow_ups):
-    return (prompt_tokens + FOLLOW_UP_TOKENS * follow_ups) / BOARD_READ + written_tokens / BOARD_WRITE
+def board_seconds(prompt_tokens, written_tokens, follow_ups, read=BOARD_READ, write=BOARD_WRITE):
+    return (prompt_tokens + FOLLOW_UP_TOKENS * follow_ups) / read + written_tokens / write
 
 
-def working_budget(base, text, max_tokens, follow_ups):
+def working_budget(base, text, max_tokens, follow_ups, read=BOARD_READ, write=BOARD_WRITE):
     """How many tokens of working fit in the board's time for this problem."""
     tokens = len(post(base + "/tokenize", {"content": text}, timeout=30)["tokens"]) + TEMPLATE_TOKENS
-    left = BOARD_BUDGET_S - board_seconds(tokens, 6 * follow_ups, follow_ups)
-    return max(0, min(max_tokens, int(left * BOARD_WRITE)))
+    left = BOARD_BUDGET_S - board_seconds(tokens, 6 * follow_ups, follow_ups, read, write)
+    return max(0, min(max_tokens, int(left * write)))
 
 
-def solve(problem, base, max_tokens, board_budget):
-    """Return the answers of one problem and what they cost."""
+def problem_text(problem):
+    return "\n".join([problem["text"].strip()] + [f"{k}) {problem['options'][k]}" for k in LETTERS])
+
+
+def think_messages(problem):
+    """The prompt of the think mode. Fine-tuning data must use the same one."""
+    return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": problem_text(problem)}]
+
+
+def solve(problem, base, max_tokens, board_budget, read=BOARD_READ, write=BOARD_WRITE):
+    """Return the answers of one problem and what they cost.
+
+    read and write are the board's tokens per second for the model in use.
+    """
     url = base + "/v1/chat/completions"
-    text = "\n".join([problem["text"].strip()] + [f"{k}) {problem['options'][k]}" for k in LETTERS])
+    text = problem_text(problem)
     vals = numeric_options(problem)
     follow_ups = 2 if vals else 1
     if board_budget:
-        max_tokens = working_budget(base, text, max_tokens, follow_ups)
+        max_tokens = working_budget(base, text, max_tokens, follow_ups, read, write)
     common = {"temperature": 0, "seed": int(CONFIG["SEED"]), "cache_prompt": True}
-    messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}]
+    messages = think_messages(problem)
     written = 0
 
     def call(extra, **options):
         nonlocal written
-        response = post(url, {"messages": messages + extra, **options, **common}, timeout=120)
+        response = post(url, {"messages": messages + extra, **options, **common}, timeout=600)
         written += response.get("usage", {}).get("completion_tokens", 0)
         return response
 
@@ -111,13 +125,13 @@ def solve(problem, base, max_tokens, board_budget):
         r = call(done + [{"role": "user", "content": ASK_NUMBER}], max_tokens=12, grammar=NUMBER_GRAMMAR)
         number = float(r["choices"][0]["message"]["content"].strip())
         by_number = match(number, vals)
-    r = call(done + [{"role": "user", "content": ASK_LETTER}], max_tokens=1, grammar="root ::= [A-E]")
-    by_letter = r["choices"][0]["message"]["content"].strip()
+    r = call(done + [{"role": "user", "content": ASK_LETTER}], max_tokens=6, grammar=LETTER_GRAMMAR)
+    by_letter = r["choices"][0]["message"]["content"].strip()[-1:]
     prompt_tokens = prompt_tokens or r.get("usage", {}).get("prompt_tokens", 0)
 
     return {"number": number, "by_number": by_number, "by_letter": by_letter,
             "prompt_tokens": prompt_tokens, "written_tokens": written, "working_limit": max_tokens,
-            "board_s": round(board_seconds(prompt_tokens, written, follow_ups), 1)}, working
+            "board_s": round(board_seconds(prompt_tokens, written, follow_ups, read, write), 1)}, working
 
 
 def main():
