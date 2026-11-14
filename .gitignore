@@ -14,3 +14,6 @@ results/*
 __pycache__/
 .venv/
 .DS_Store
+
+# Fine-tuned weights and their training files
+models/
