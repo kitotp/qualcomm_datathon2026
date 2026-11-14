@@ -63,7 +63,7 @@ class Trainer:
                  student_db="data/student.db"):
         texts = {}
         for path in inputs:
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 for line in f:
                     if line.strip():
                         p = json.loads(line)
