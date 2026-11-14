@@ -48,6 +48,8 @@ def parse_args():
     p.add_argument("--no-ocr", action="store_true", help="skip OCR; options will be empty")
     p.add_argument("--save-images", action="store_true", help="also save problem images as PNG")
     p.add_argument("--limit", type=int, default=0, help="only process the first N rows (for testing)")
+    p.add_argument("--text-only", action="store_true",
+                   help="keep only problems that don't need their figure (text_only is true)")
     return p.parse_args()
 
 
@@ -236,8 +238,10 @@ def main():
     rows = []
     t0 = time.time()
     for path in shard_paths(args):
-        table = pq.read_table(path, columns=["language"])
-        wanted = [i for i, lang in enumerate(table.column(0).to_pylist()) if lang in languages]
+        table = pq.read_table(path, columns=["language", "text_only"])
+        wanted = [i for i, (lang, text_only) in enumerate(zip(table.column(0).to_pylist(),
+                                                              table.column(1).to_pylist()))
+                  if lang in languages and (text_only or not args.text_only)]
         if not wanted:
             continue
         full = pq.read_table(path).take(wanted)
