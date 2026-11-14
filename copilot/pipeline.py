@@ -8,6 +8,7 @@ import time
 import urllib.error
 
 from . import option_prior, think
+from .bridge import solvable
 from .config import CONFIG
 from .debias import debiased_letter
 from .llm import URL, answer_letter
