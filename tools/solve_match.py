@@ -32,18 +32,14 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from copilot.client import post  # noqa: E402
 from copilot.config import CONFIG  # noqa: E402
+from copilot.think import ASK_LETTER, LETTER_GRAMMAR, problem_text, think_messages  # noqa: E402,F401
 
 LETTERS = "ABCDE"
 UNIT = r"\s*(?:cm|mm|km|m|kg|g|€|euros?|%|°|min|h|s)?\.?\s*"
 NUMBER = re.compile(r"^\s*(-?\d+(?:[.,]\d+)?)" + UNIT + r"$", re.I)
 
-SYSTEM = ("You solve math competition problems for school students. Solve the problem step by step. "
-          "Be concise: do not restate the problem, go straight to the calculation.")
 ASK_NUMBER = "Final answer, as a number only:"
-ASK_LETTER = "Final answer, the letter of the option only:"
 NUMBER_GRAMMAR = 'root ::= "-"? [0-9]+ ("." [0-9]+)?'
-# The model starts its reply with words, so a bare letter as the first token is unreliable
-LETTER_GRAMMAR = 'root ::= "Answer: " [A-E]'
 
 # Board speeds for Qwen3.5 0.8B, in tokens per second (README step 6)
 BOARD_READ, BOARD_WRITE = 11.0, 5.9
@@ -83,15 +79,6 @@ def working_budget(base, text, max_tokens, follow_ups, read=BOARD_READ, write=BO
     return max(0, min(max_tokens, int(left * write)))
 
 
-def problem_text(problem):
-    return "\n".join([problem["text"].strip()] + [f"{k}) {problem['options'][k]}" for k in LETTERS])
-
-
-def think_messages(problem):
-    """The prompt of the think mode. Fine-tuning data must use the same one."""
-    return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": problem_text(problem)}]
-
-
 def solve(problem, base, max_tokens, board_budget, read=BOARD_READ, write=BOARD_WRITE):
     """Return the answers of one problem and what they cost.
 
@@ -125,7 +112,7 @@ def solve(problem, base, max_tokens, board_budget, read=BOARD_READ, write=BOARD_
         r = call(done + [{"role": "user", "content": ASK_NUMBER}], max_tokens=12, grammar=NUMBER_GRAMMAR)
         number = float(r["choices"][0]["message"]["content"].strip())
         by_number = match(number, vals)
-    r = call(done + [{"role": "user", "content": ASK_LETTER}], max_tokens=6, grammar=LETTER_GRAMMAR)
+    r = call(done + [{"role": "user", "content": ASK_LETTER}], max_tokens=16, grammar=LETTER_GRAMMAR)
     by_letter = r["choices"][0]["message"]["content"].strip()[-1:]
     prompt_tokens = prompt_tokens or r.get("usage", {}).get("prompt_tokens", 0)
 

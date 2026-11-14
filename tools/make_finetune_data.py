@@ -11,7 +11,7 @@ Two sources, written in the same chat format:
 Two training sets, each with the exact prompt that the copilot sends:
 
   letters    the predict.py prompt (copilot/llm.py), answered with one letter
-  solutions  the think prompt (tools/solve_match.py), answered with a short
+  solutions  the think prompt (copilot/think.py), answered with a short
              solution that ends with "Answer: X". M3Kang problems are only
              in this set when data/finetune/teacher.jsonl has a solution for
              them (tools/teacher_solutions.py writes it).
@@ -36,7 +36,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 from copilot.llm import build_messages  # noqa: E402
-from solve_match import think_messages  # noqa: E402
+from copilot.think import think_messages  # noqa: E402
 
 LETTERS = "ABCDE"
 AQUA_URL = "https://raw.githubusercontent.com/google-deepmind/AQuA/master/train.json"
