@@ -48,7 +48,7 @@ Two candidates. Both fit the board's time limit by our estimate.
 
 | Model | Why | Risk |
 |---|---|---|
-| `unsloth/gemma-3-1b-it` | Standard architecture, trains fast anywhere. Best small model in our "think" test (24%). | fp16 can give a `nan` loss; the script stops and says so. Its license is the Gemma terms, which the team must check before publishing. |
+| `unsloth/gemma-3-1b-it` | Standard architecture, trains fast anywhere. 24% in our "think" test. LFM2 1.2B scored higher there (27%, `LiquidAI/LFM2-1.2B`) and is worth a try if Gemma gives trouble. | fp16 can give a `nan` loss; the script stops and says so. Its license is the Gemma terms, which the team must check before publishing. |
 | `Qwen/Qwen3.5-0.8B` | The model that is on the board now, Apache 2.0. | New architecture with linear attention. Without the `flash-linear-attention` and `causal_conv1d` packages, transformers falls back to a slow implementation. On Windows those packages may not install. |
 
 Run the test for each, and read the `tokens/s` in the log:

@@ -6,8 +6,8 @@ This is the state of the work on `predict.py` accuracy. Read the summary; the re
 
 - **Best result so far: 27.6% on the full validation set (562 problems), with no language model.** The baseline is 23.1%, the same as always answering D.
 - The 27.6% comes from an "option prior": when the five options are numbers, the smallest and the largest are rarely the answer. It answers in 0 seconds.
-- **Every model that fits the board's 60 seconds scores below the prior**, with one letter or with written working. We tried five models from 0.8B to 2B.
-- Models that do reason well enough (Phi-4-mini, Qwen3.5 4B: 33% to 35% with free working) would need 3 to 5 minutes per problem on the board.
+- **No model that fits the board's 60 seconds clearly beats the prior**, with one letter or with written working. We tried five models from 0.8B to 2B; the best, LFM2 1.2B with working, ties it (27.0% against 25.0% on 100 problems).
+- Models that do reason well enough (Phi-4-mini, Qwen3.5 4B: 33% to 42% with free working) would need 3 to 5 minutes per problem on the board.
 - 223 of the 562 validation problems have no options read by OCR. On those, every method answers blind. Reading more options helps whatever else we do.
 - **In progress:** fine-tuning a small model on problems with written solutions, on a PC with an NVIDIA GPU ([FINETUNE_PC.md](FINETUNE_PC.md)). No result yet. The laptop cannot train it: 16 GB of RAM is not enough next to everything else.
 
@@ -55,15 +55,19 @@ Limits: it only knows something when the options are numbers (239 of 562 validat
 
 | Model | File | One letter | Think, within 60 s | Free working | Board time for free working |
 |---|---|---|---|---|---|
-| Qwen3.5 0.8B (Q8) | 0.8 GB | 22.7% | 20.0% (150) | 21.0% (100) | 62 s |
+| Qwen3.5 0.8B (Q8) | 0.8 GB | 22.7% | 25.0% (100) | 23.8% (80) | 62 s |
 | Gemma 3 1B (Q8) | 1.0 GB | 21.2% | 24.0% (100) | 25.0% (80) | 72 s |
-| LFM2 1.2B (Q8) | 1.2 GB | 23.0% | 17.0% (100) | 22.5% (80) | 78 s |
-| Qwen2.5-Math 1.5B (Q8) | 1.5 GB | 20.4% | 14.0% (100) | 12.5% (80) | 122 s |
+| LFM2 1.2B (Q8) | 1.2 GB | 23.0% | **27.0% (100)** | 30.0% (80) | 78 s |
+| Qwen2.5-Math 1.5B (Q8) | 1.5 GB | 20.4% | 19.0% (100) | 22.5% (80) | 122 s |
 | Qwen3.5 2B (Q4) | 1.3 GB | 24.2%, 14% too slow | no time to write | 23.9% (67) | 141 s |
 | Phi-4-mini 3.8B (Q4) | 2.3 GB | 26.3%, 99% too slow | not run | 32.5% (80) | 195 s |
-| Qwen3.5 4B (Q4) | 2.8 GB | 26.8%, all too slow | not run | 35.3% (34, stopped early) | 311 s |
+| Qwen3.5 4B (Q4) | 2.8 GB | 26.8%, all too slow | not run | 41.9% (62, stopped early) | 311 s |
 
 The number in brackets is how many problems the mode ran on. The option prior scores 28.6% on the same 339 problems and 25% to 26% on the smaller samples. With 80 to 150 problems one standard error is 4 to 5 points.
+
+A first run lost part of the think and free answers: the call for the final letter allowed 6 tokens, which cut `Answer: X` for some models (up to half of the answers of LFM2 and Qwen2.5-Math). The table has the numbers after the fix. Gemma 3 1B, Qwen3.5 2B, and Phi-4-mini were not affected; Qwen3.5 0.8B lost about 5%.
+
+After the fix, **LFM2 1.2B is the best small model with working: 27.0% within the board's time, against 25.0% for the prior on the same 100 problems.** That is inside the noise, but it is the only small model that does not lose to the prior, so it is a candidate base for fine-tuning next to Gemma 3 1B.
 
 **How the board time is estimated.** The laptop is much faster than the board, so time is not measured. The README gives the 0.8B model's speed on the board (reads 11.3 tokens per second, writes 5.9). The laptop measures every model on 4 CPU threads, and each model's ratio to the 0.8B model is applied to the board's numbers. For example the 2B model reads about 2.9 tokens per second on the board by this estimate, so a 200-token problem takes about 70 seconds to read. Bigger models are probably even slower on the board than this. Measure a model on the board before choosing it.
 
