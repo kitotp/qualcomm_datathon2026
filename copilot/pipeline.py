@@ -7,11 +7,13 @@ import socket
 import time
 import urllib.error
 
+from . import option_prior
 from .config import CONFIG
 from .llm import URL, answer_letter
 
 TIME_LIMIT = float(CONFIG["TIME_LIMIT_SECONDS"])
 FALLBACK = CONFIG["FALLBACK_ANSWER"]
+ANSWER_MODE = CONFIG.get("ANSWER_MODE", "model")
 MARGIN = 3.0  # seconds kept free for Python and for writing the answer
 
 
@@ -25,6 +27,10 @@ def solve(problem, index=None, k=0, exclude_id=None, image_b64=None, llm_url=URL
     """
     start = time.perf_counter()
     result = {"answer": FALLBACK, "status": "ok", "prompt_tokens": 0, "retrieved": "", "examples": []}
+    if ANSWER_MODE == "prior":  # no model call: the options alone decide
+        result["answer"] = option_prior.pick(problem)
+        result["seconds"] = round(time.perf_counter() - start, 2)
+        return result
     try:
         examples = []
         if index is not None and k > 0:
