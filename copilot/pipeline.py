@@ -9,6 +9,7 @@ import urllib.error
 
 from . import option_prior, think
 from .config import CONFIG
+from .debias import debiased_letter
 from .llm import URL, answer_letter
 
 TIME_LIMIT = float(CONFIG["TIME_LIMIT_SECONDS"])
@@ -48,8 +49,13 @@ def solve(problem, index=None, k=0, exclude_id=None, image_b64=None, llm_url=URL
             result["examples"] = hits
             result["retrieved"] = ";".join(f"{p['id']}:{s:.2f}" for s, p in hits)
         remaining = time_limit - (time.perf_counter() - start) - MARGIN
-        letter, timings = answer_letter(problem, examples, timeout=max(remaining, 1.0),
-                                        image_b64=image_b64, url=llm_url)
+        if image_b64:  # the vision server in the explorer: keep the plain grammar answer
+            letter, timings = answer_letter(problem, examples, timeout=max(remaining, 1.0),
+                                            image_b64=image_b64, url=llm_url)
+        else:  # letter probabilities minus the model's letter bias (copilot/debias.py),
+            # on the English version when the input has one (copilot/bridge.py)
+            letter, timings = debiased_letter(solvable(problem), examples,
+                                              timeout=max(remaining, 1.0), url=llm_url)
         result["answer"] = letter
         result["prompt_tokens"] = timings.get("prompt_n", 0)
     except (socket.timeout, TimeoutError):

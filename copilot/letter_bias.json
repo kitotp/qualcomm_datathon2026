@@ -1,0 +1,12 @@
+{
+  "mode": "prefill",
+  "prior_with_options": {
+    "A": 0.257,
+    "B": 0.361,
+    "C": 0.15,
+    "D": -0.381,
+    "E": 0.103
+  },
+  "constant_without_options": "D",
+  "fitted_on": "2932 train rows, 1863 with options"
+}

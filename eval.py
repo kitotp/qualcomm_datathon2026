@@ -18,6 +18,7 @@ import subprocess
 import time
 from collections import Counter, defaultdict
 
+from copilot.bridge import add_pivots
 from copilot.config import CONFIG
 from copilot.pipeline import TIME_LIMIT, solve
 
@@ -49,6 +50,7 @@ def main():
 
     with open(args.input) as f:
         problems = [json.loads(line) for line in f if line.strip()]
+    add_pivots(problems)  # as predict.py does, on the whole file, before any filter
     languages = set(filter(None, args.languages.split(",")))
     if languages:
         problems = [x for x in problems if x["language"] in languages]
