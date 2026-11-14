@@ -30,6 +30,8 @@ DATASET = "qualcomm/M3Kang"
 SHARD = "data/{split}-{index:05d}-of-{total:05d}.parquet"
 SHARDS = {"high_quality": 4, "standard": 10}
 LETTERS = "ABCDE"
+# Bump when parse_options() changes, so failures cached by an older version are read again
+PARSER_VERSION = 2
 
 
 def parse_args():
@@ -131,7 +133,80 @@ def parse_options(boxes):
             if all(cleaned.values()):
                 return cleaned
             return {}  # five markers, but the options are pictures
+    return recover_missing_marker(items)
+
+
+# OCR often drops one marker, most often "C)", and keeps its value as a box of
+# its own: ["A) 17", "B) 18", "20", "D) 23", "E) 25"]. When exactly one of B, C
+# or D is missing, the value is the last box before the next marker.
+MAX_RECOVERED_CHARS = 20
+
+
+def recover_missing_marker(items):
+    starts = [i for i, it in enumerate(items) if is_marker(it["text"], "A", strict=True) is not None]
+    for start in reversed(starts):
+        parts = {}  # letter -> list of text pieces: the marker's own value, then the boxes after it
+        missing, current = None, None
+        expected = list(LETTERS)
+        for it in items[start:]:
+            text = it["text"]
+            letter = expected[0] if expected else None
+            rest = is_marker(text, letter, strict=(letter == "A")) if letter else None
+            skipped = expected[1] if len(expected) > 1 and letter in "BCD" and missing is None else None
+            rest_skipped = is_marker(text, skipped, strict=True) if skipped else None
+            if rest is not None:
+                current = expected.pop(0)
+            elif rest_skipped is not None:
+                missing = expected.pop(0)
+                current = expected.pop(0)
+                rest = rest_skipped
+            elif current:
+                if text.lstrip(")）] ").strip():
+                    parts[current].append(text.lstrip(")）] ").strip())
+                continue
+            else:
+                continue
+            parts[current] = [rest.lstrip(")）] ").strip()] if rest.strip() else []
+        if expected or missing is None:
+            continue
+        before = LETTERS[LETTERS.index(missing) - 1]
+        if len(parts[before]) < 2 or len(parts[before][-1]) > MAX_RECOVERED_CHARS:
+            continue
+        parts[missing] = [parts[before].pop()]
+        options = {k: " ".join(parts[k]).strip() for k in LETTERS}
+        # A unit split off its number ("4032", "cm") is not an option
+        has_digit = [bool(re.search(r"\d", options[k])) for k in LETTERS if k != missing]
+        if all(has_digit) and not re.search(r"\d", options[missing]):
+            continue
+        if all(options.values()):
+            return options
     return {}
+
+
+# Options are usually the same in every language: numbers, units, formulas.
+# When OCR failed in one language, copy them from another, but only when they
+# hold no words that a translation would change.
+WORD = re.compile(r"[^\W\d_]{3,}")
+
+
+def language_neutral(options):
+    return bool(options) and not any(WORD.search(v) for v in options.values())
+
+
+def fill_from_other_languages(rows):
+    """Fill empty options from another language of the same problem. Returns the count filled."""
+    by_id = {}
+    for r in rows:
+        if r["options"] and language_neutral(r["options"]):
+            by_id.setdefault(r["id"], r["options"])
+    filled = 0
+    for r in rows:
+        r["options_source"] = "ocr" if r["options"] else "none"
+        if not r["options"] and r["id"] in by_id:
+            r["options"] = dict(by_id[r["id"]])
+            r["options_source"] = "other_language"
+            filled += 1
+    return filled
 
 
 def main():
@@ -155,7 +230,7 @@ def main():
         with open(cache_path) as f:
             for line in f:
                 row = json.loads(line)
-                cache[row["key"]] = row["options"]
+                cache[row["key"]] = (row["options"], row.get("parser", 1))
     cache_file = open(cache_path, "a")
 
     rows = []
@@ -175,13 +250,15 @@ def main():
             if args.save_images:
                 with open(os.path.join(args.out, "images", key.replace("|", "_") + ".png"), "wb") as f:
                     f.write(image)
-            if key in cache:
-                options = cache[key]
+            # A failure cached by an older parser is read again: the parser may do better now
+            if key in cache and (cache[key][0] or cache[key][1] >= PARSER_VERSION or not ocr):
+                options = cache[key][0]
             elif ocr:
                 boxes, _ = ocr(image)
                 options = parse_options(boxes or [])
-                cache[key] = options
-                cache_file.write(json.dumps({"key": key, "options": options}, ensure_ascii=False) + "\n")
+                cache[key] = (options, PARSER_VERSION)
+                cache_file.write(json.dumps({"key": key, "options": options, "parser": PARSER_VERSION},
+                                            ensure_ascii=False) + "\n")
             else:
                 options = {}
             year = r["id"].split("_")[1]
@@ -199,6 +276,9 @@ def main():
                 rate = len(rows) / (time.time() - t0)
                 print(f"  {len(rows)} rows, {rate:.1f} rows/s", flush=True)
     cache_file.close()
+    from_ocr = sum(1 for r in rows if r["options"])
+    filled = fill_from_other_languages(rows)
+    print(f"Options read by OCR: {from_ocr}; copied from another language: {filled}")
 
     for split in ("train", "val"):
         out = os.path.join(args.out, f"{split}.jsonl")
