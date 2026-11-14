@@ -16,6 +16,7 @@ import json
 import os
 import sys
 
+from copilot.bridge import add_pivots
 from copilot.pipeline import solve
 
 
@@ -36,6 +37,7 @@ def main():
 
     with open(args.input) as f:
         problems = [json.loads(line) for line in f if line.strip()]
+    add_pivots(problems)  # read the English version of a problem when the file has one
 
     with open(args.output, "w", newline="") as out:
         writer = csv.writer(out)
