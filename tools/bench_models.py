@@ -73,7 +73,12 @@ PROBE = ("A school library keeps its books on shelves. Each shelf holds a fixed 
          "Describe in detail how the librarian could organize the count.")
 
 
+LOCAL = {}  # alias: path, for models given as name=/path/to/file.gguf
+
+
 def download(alias):
+    if alias in LOCAL:
+        return LOCAL[alias]
     repo, name = MODELS[alias]
     path = os.path.join(MODELS_DIR, name)
     if not os.path.exists(path):
@@ -202,7 +207,7 @@ def bench(alias, args, with_options, sample):
                 else:  # free: what the model could do with no time limit
                     for_each(sample[:FREE_SAMPLE], think_answer(server.base, read, write, FREE_TOKENS, False),
                              out, args.jobs, mode)
-    if not args.keep and alias != REFERENCE:
+    if not args.keep and alias != REFERENCE and alias not in LOCAL:
         os.remove(path)
 
 
@@ -257,7 +262,8 @@ def summarize(val):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--models", default="", help="aliases joined by commas; see MODELS in this file")
+    p.add_argument("--models", default="",
+                   help="aliases joined by commas (see MODELS in this file), or name=/path/to/file.gguf")
     p.add_argument("--modes", default="letter,think")
     p.add_argument("--input", default="data/val.jsonl")
     p.add_argument("--sample", type=int, default=150, help="problems for the think mode; 0 means all")
@@ -277,6 +283,9 @@ def main():
         sample = random.Random(0).sample(with_options, args.sample)
     if not args.report:
         for alias in filter(None, args.models.split(",")):
+            if "=" in alias:  # a GGUF of our own, such as a fine-tuned model
+                alias, path = alias.split("=", 1)
+                LOCAL[alias] = os.path.expanduser(path)
             try:
                 bench(alias, args, with_options, sample)
             except Exception as error:  # one broken model must not stop the others

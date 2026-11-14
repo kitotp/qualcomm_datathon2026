@@ -9,7 +9,7 @@ This is the state of the work on `predict.py` accuracy. Read the summary; the re
 - **Every model that fits the board's 60 seconds scores below the prior**, with one letter or with written working. We tried five models from 0.8B to 2B.
 - Models that do reason well enough (Phi-4-mini, Qwen3.5 4B: 33% to 35% with free working) would need 3 to 5 minutes per problem on the board.
 - 223 of the 562 validation problems have no options read by OCR. On those, every method answers blind. Reading more options helps whatever else we do.
-- **In progress:** fine-tuning the 0.8B model on M3Kang train. No result yet.
+- **In progress:** fine-tuning a small model on problems with written solutions, on a PC with an NVIDIA GPU ([FINETUNE_PC.md](FINETUNE_PC.md)). No result yet. The laptop cannot train it: 16 GB of RAM is not enough next to everything else.
 
 **Decision for the team:** make the option prior the default answer of `predict.py` (`ANSWER_MODE=prior` in `config.env`). It is in this branch but turned off.
 
@@ -61,7 +61,7 @@ Limits: it only knows something when the options are numbers (239 of 562 validat
 | Qwen2.5-Math 1.5B (Q8) | 1.5 GB | 20.4% | 14.0% (100) | 12.5% (80) | 122 s |
 | Qwen3.5 2B (Q4) | 1.3 GB | 24.2%, 14% too slow | no time to write | 23.9% (67) | 141 s |
 | Phi-4-mini 3.8B (Q4) | 2.3 GB | 26.3%, 99% too slow | not run | 32.5% (80) | 195 s |
-| Qwen3.5 4B (Q4) | 2.8 GB | 26.8%, all too slow | not run | 35.3% (34, still running) | 311 s |
+| Qwen3.5 4B (Q4) | 2.8 GB | 26.8%, all too slow | not run | 35.3% (34, stopped early) | 311 s |
 
 The number in brackets is how many problems the mode ran on. The option prior scores 28.6% on the same 339 problems and 25% to 26% on the smaller samples. With 80 to 150 problems one standard error is 4 to 5 points.
 
@@ -93,7 +93,7 @@ So that nobody repeats it:
 
 ## What is next
 
-1. **Fine-tune the 0.8B model** (it is the only one sure to fit the time limit). First on M3Kang train only, with the exact `predict.py` prompt, scored on validation. If that beats the prior, add 20,000 problems from AQuA-RAT (Apache 2.0, five options A to E, with written solutions) and solutions written by a bigger model for the train problems it gets right.
+1. **Fine-tune a small model** (Gemma 3 1B or Qwen3.5 0.8B: both fit the time limit by our estimate) on 20,000 problems from AQuA-RAT (Apache 2.0, five options A to E, with written solutions), in the prompt format of the copilot. Then score it on validation with the board's time limit. Later, add solutions written by a bigger model for the M3Kang train problems it gets right.
 2. **Read more options.** The work on `feature/ocr-options` now moves accuracy directly. Rerun `tools/fit_option_prior.py --save` after the data changes.
 3. **Confirm timing on the board** for whatever replaces the baseline.
 

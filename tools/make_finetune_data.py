@@ -112,7 +112,8 @@ def main():
     args = p.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
-    kangaroo = load_jsonl(args.train)
+    # A machine that only trains on AQuA has no M3Kang files, and needs none
+    kangaroo = load_jsonl(args.train) if os.path.exists(args.train) else []
     aqua = aqua_problems(args.aqua_file, args.aqua, args.max_question, args.max_solution, args.seed) \
         if args.aqua else []
     teacher = {}
