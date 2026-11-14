@@ -1,0 +1,21 @@
+{
+ "fitted_on": "data/train.jsonl (2932 problems)",
+ "weights": {
+  "in-text": -0.2514,
+  "letter:no-options:A": -0.1451,
+  "letter:no-options:B": -0.1451,
+  "letter:no-options:C": 0.0802,
+  "letter:no-options:D": 0.3549,
+  "letter:no-options:E": -0.1451,
+  "letter:options:A": -0.0745,
+  "letter:options:B": -0.0101,
+  "letter:options:C": -0.0952,
+  "letter:options:D": 0.0436,
+  "letter:options:E": 0.1362,
+  "rank:0": -0.6825,
+  "rank:1": 0.2286,
+  "rank:2": 0.5958,
+  "rank:3": 0.3672,
+  "rank:4": -0.5091
+ }
+}
