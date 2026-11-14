@@ -719,7 +719,7 @@ On Windows, activate the environment with `.venv\Scripts\activate`.
 On your laptop:
 
 ```bash
-python3 laptop/prepare_m3kang.py --languages eng,cat
+python3 laptop/prepare_m3kang.py --languages eng,cat --text-only
 ```
 
 It downloads the first `high_quality` file of the dataset (393 MB, once), keeps English and Catalan, reads the options from each image, and splits the problems into training and validation sets. It takes about 15 minutes per language. If you stop it, run it again: it caches the OCR results in `data/.ocr_cache.jsonl`.
@@ -736,6 +736,7 @@ Useful options:
 | `--val-years 2023,2024` | Hold out whole years instead, which is closer to an unseen test |
 | `--save-images` | Also save every image as a PNG, so you can look at the problems |
 | `--no-ocr` | Skip OCR. Every problem then has empty options. |
+| `--text-only` | Keep only problems that don't need their figure (`text_only` is true). Our model sees text, not images, so this is how we build train and val. It also skips OCR on the other problems, so it runs about twice as fast. |
 
 The same problem has the same `id` in every language, so the split is made by `id`: a problem's translations are never split between training and validation.
 
@@ -771,6 +772,34 @@ One problem per line in `data/train.jsonl` and `data/val.jsonl`:
 ```
 
 **Don't commit these files, or share them outside the datathon.** M3Kang is licensed for research use only. `.gitignore` already excludes them.
+
+### 9.5 Our test set: the text-only demo problems
+
+The organizers' demo parquet, `demo-00000-of-00001.parquet`, has 50 problems from 2026 in English and Catalan (100 rows), levels 0 to 7. Ten of them need their figure, so we drop them. The other 40 problems (80 rows) are our test set, kept apart from `train.jsonl` and `val.jsonl`.
+
+Each teammate builds the same file on their laptop. Put the parquet in `data/`, then run:
+
+```bash
+python3 laptop/make_demo_test.py --parquet data/demo-00000-of-00001.parquet
+```
+
+It runs `prepare_m3kang.py --text-only` on the parquet and writes `data/demo/test.jsonl`. Add `--save-images` to keep a PNG of each problem in `data/demo/images/`.
+
+**Check:**
+
+```
+  train cat: 40
+  train eng: 40
+Options read from the image: 80/80 (100%)
+...
+Renamed it to data/demo/test.jsonl
+```
+
+Measure on it like on the validation set:
+
+```bash
+python3 eval.py --input data/demo/test.jsonl --name <branch-name>
+```
 
 ---
 
