@@ -1,0 +1,11 @@
+{
+  "weight": 0.75,
+  "bias": {
+    "A": 0.441,
+    "B": 0.364,
+    "C": 0.137,
+    "D": -0.457,
+    "E": 0.164
+  },
+  "fitted_on": "data/train.jsonl (1255 rows with five options)"
+}
