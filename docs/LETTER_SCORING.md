@@ -44,6 +44,20 @@ Val, the 210 rows with five options:
 
 Every weight from 0.25 to 4 beat both single methods on val (29% to 34%). The raw model answers D on 142 of 210 rows. In the official run, Catalan problems are answered through their English version (`copilot/bridge.py`), so the English number is closer to what to expect there.
 
+**What to expect on new problems: about 29%, not 34%.** On train, six times bigger than val, the combined score gets 28.7% (model alone, letter bias removed: 25.3%). The 33.8% on val is probably partly luck in a small set. The gain over the option prior alone and over always D holds on both.
+
+### Tried and dropped: asking twice with the options reversed
+
+A second pass shows the options in reverse order (the value under A goes under E), and the two passes are averaged by value, so a taste for one letter pushes two different values and cancels out. It needs a second forward pass. Fitted the same way on the same rows:
+
+| Val, same 210 rows | One pass | Two passes |
+| --- | --- | --- |
+| Model alone, letter bias removed | 25.2% | 24.8% |
+| Model + prior | **33.8%** | 26.7% (weight 1.0) |
+| Train accuracy, model + prior | 28.7% | 28.6% |
+
+The reversal did remove the letter habit (the answers spread evenly over A to E), but the model got no better: most of what it "knew" was the habit. On train both versions are equal, so it doubles the time for nothing. We kept one pass.
+
 ## Limits
 
 - It is an educated guess, not reasoning. It can't explain an answer to a student. Teaching features need verified explanations, for example a formula checked by Python, or solutions written offline and checked against the label.
@@ -62,5 +76,5 @@ Then on the board, with `ANSWER_MODE=combined`: `python3 eval.py --name letter-s
 
 ## Next
 
-- Ask twice, with the options in reverse order, and add both passes by value. This cancels most of the model's position bias. It costs a second forward pass.
-- Confirm the best version on the board with `eval.py`, for the official time per problem.
+- Confirm on the board with `ANSWER_MODE=combined` and `eval.py --name letter-scoring`, for the official time per problem.
+- For explanations a student can use, try a formula written by the model and checked by Python. It would also give the official run real reasoning instead of a better guess.
