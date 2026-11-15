@@ -173,7 +173,7 @@ class TrainerAPI:
         if letter not in ("A", "B", "C", "D", "E"):
             raise ValueError("Choose A to E")
         result = coach_hint(trainer.problems[problem_id], letter)
-        return {"hint": result["hint"], "from_model": result["source"] == "model"}
+        return {"hint": result["hint"], "from_model": result["source"].startswith("model")}
 
     def buy(self, student, item):
         return {"resident": self.city.buy(student, item)}
