@@ -59,6 +59,8 @@ const STRINGS = {
     wrong: "Not this one",
     noTrap: "Read the question again and check each step.",
     easier: "Try an easier one",
+    coach: "Ask the coach",
+    coachThinking: "The coach is thinking…",
     next: "Next problem",
     houses: n => `${s("{n} house", "{n} houses")(n)} · up to 50`,
     houseStats: (floor, max, right) => `Floor ${floor} of ${max} · ${s("{n} right answer", "{n} right answers")(right)}`,
@@ -128,6 +130,8 @@ const STRINGS = {
     wrong: "Aquesta no és",
     noTrap: "Torna a llegir l'enunciat i revisa cada pas.",
     easier: "Prova'n un de més fàcil",
+    coach: "Pregunta a l'entrenador",
+    coachThinking: "L'entrenador està pensant…",
     next: "Següent problema",
     houses: n => `${s("{n} casa", "{n} cases")(n)} · fins a 50`,
     houseStats: (floor, max, right) =>

@@ -21,6 +21,7 @@ import threading
 import time
 
 from copilot.city import MAX_FLOORS, SHOP
+from copilot.coach import coach_hint
 from copilot.tutor import Trainer
 from matrix_frames import answer_frame, blank, question_frame
 
@@ -103,6 +104,7 @@ class TrainerAPI:
             ("/api/me/{student}", self.me),
             ("/api/next/{student}/{language}/{grade}/{topic}", self.next),
             ("/api/submit/{student}/{language}/{grade}/{problem_id}/{letter}", self.submit),
+            ("/api/coach/{language}/{grade}/{problem_id}/{letter}", self.coach),
             ("/api/buy/{student}/{item}", self.buy),
             ("/api/reset/{student}/{pin}", self.reset),
         ]
@@ -156,6 +158,22 @@ class TrainerAPI:
         reward = self.city.reward(student, feedback["correct"], trainer.problems[problem_id]["tier"])
         self._show(answer_frame(feedback["tier"], letter, feedback["correct"]))
         return {**feedback, "reward": reward, "frame": self.frame}
+
+    def coach(self, language, grade, problem_id, letter):
+        """One guiding question from the language model, after a wrong answer.
+
+        It takes about 30 seconds on the board, so the page asks only when the
+        student presses the coach button. The hint never holds the answer:
+        copilot/coach.py checks it and falls back to a fixed text.
+        """
+        trainer = self.pool.get(language, grade)
+        if problem_id not in trainer.problems:
+            raise ValueError("Unknown problem")
+        letter = str(letter).strip().upper()
+        if letter not in ("A", "B", "C", "D", "E"):
+            raise ValueError("Choose A to E")
+        result = coach_hint(trainer.problems[problem_id], letter)
+        return {"hint": result["hint"], "from_model": result["source"].startswith("model")}
 
     def buy(self, student, item):
         return {"resident": self.city.buy(student, item)}

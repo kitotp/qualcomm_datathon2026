@@ -223,3 +223,6 @@ input:focus { border-color: var(--text); }
 }
 .find-me .icon { width: 18px; height: 18px; color: var(--accent); }
 .find-me:hover { border-color: var(--text); }
+
+/* The AI coach's question, under the trap explanation */
+.coach-hint { margin: 10px 0 0; font-style: italic; }

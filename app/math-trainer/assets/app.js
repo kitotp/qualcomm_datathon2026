@@ -329,6 +329,24 @@ async function answer(letter, button) {
     body.textContent = result.trap || t("noTrap");
     fb.append(title, body);
     renderCoins();
+    // The AI coach: one guiding question from the language model, only on request (it is slow on the board)
+    const coach = document.createElement("button");
+    coach.className = "ghost";
+    coach.textContent = t("coach");
+    const problemId = state.problem.id;
+    coach.onclick = async () => {
+      coach.disabled = true;
+      coach.textContent = t("coachThinking");
+      try {
+        const reply = await api("coach", state.language, state.grade, problemId, letter);
+        const hint = document.createElement("p");
+        hint.className = "coach-hint";
+        hint.textContent = reply.hint;
+        fb.append(hint);
+        coach.remove();
+      } catch (e) { coach.disabled = false; coach.textContent = t("coach"); toast(e.message); }
+    };
+    $("actions").append(coach);
   }
 
   const actions = $("actions");
